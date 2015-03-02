@@ -100,27 +100,6 @@ public:
     {
         isUnlocked = false;
     }
-	
-	void print()
-    {
-        std::cout << '\r';
-
-        std::cout << '[' << std::string(roll_w, '*') << std::string(18 - roll_w, ' ') << ']'
-                  << '[' << std::string(pitch_w, '*') << std::string(18 - pitch_w, ' ') << ']'
-                  << '[' << std::string(yaw_w, '*') << std::string(18 - yaw_w, ' ') << ']';
-
-        if (onArm) {
-            std::string poseString = currentPose.toString();
-
-            std::cout << '[' << (isUnlocked ? "unlocked" : "locked  ") << ']'
-                      << '[' << (whichArm == myo::armLeft ? "L" : "R") << ']'
-                      << '[' << poseString << std::string(14 - poseString.size(), ' ') << ']';
-        } else {
-            std::cout << '[' << std::string(8, ' ') << ']' << "[?]" << '[' << std::string(14, ' ') << ']';
-        }
-
-        std::cout << std::flush;
-    }
 
     bool onArm;
     myo::Arm whichArm;
@@ -134,6 +113,9 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 // Application Entry
 ///////////////////////////////////////////////////////////////////////////
+
+int serviceStop = 0;
+
 int _tmain (int argc, TCHAR *argv[])
 {
     SERVICE_TABLE_ENTRY ServiceTable[] = 
@@ -180,9 +162,7 @@ VOID WINAPI ServiceMain (DWORD argc, LPTSTR *argv)
         OutputDebugString(_T(
           "My Sample Service: ServiceMain: SetServiceStatus returned error"));
     }
- 
-    // Implement ServicesStartEvent 
- 
+  
     g_ServiceStopEvent = CreateEvent (NULL, TRUE, FALSE, NULL);
     if (g_ServiceStopEvent == NULL) 
     {   
@@ -249,6 +229,7 @@ VOID WINAPI ServiceCtrlHandler (DWORD CtrlCode)
            break;
  
         // Implement ServicesStopEvent Criteria
+		serviceStop = 1;
         
         g_ServiceStatus.dwControlsAccepted = 0;
         g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
@@ -299,6 +280,11 @@ DWORD WINAPI ServiceWorkerThread (LPVOID lpParam)
 			while (1) 
 			{
 				hub.run(1000/20);  // 20 times a second
+				if (serviceStop == 1)
+				{
+					serviceStop = 0;
+					break;
+				}
 			}
 		} 
 		catch (const std::exception& e) 
