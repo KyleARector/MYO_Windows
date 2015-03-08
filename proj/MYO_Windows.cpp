@@ -2,6 +2,8 @@
 // Special thanks to Mohit Arora for the tutorial on creating a simple windows service.
 //
 // All MYO Libraries Copyright (C) 2013-2014 Thalmic Labs Inc.
+//
+// Copyright (C) 2015 Kyle Rector
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -16,6 +18,7 @@
 #include <string>
 #include <algorithm>
 #include <myo/myo.hpp>
+#include <Windows.h>
 #pragma comment(lib, "advapi32.lib")
 
 SERVICE_STATUS        g_ServiceStatus = {0}; 
@@ -65,7 +68,7 @@ public:
 
         roll_w = static_cast<int>((roll + (float)M_PI)/(M_PI * 2.0f) * 18);
         pitch_w = static_cast<int>((pitch + (float)M_PI/2.0f)/M_PI * 18);
-        yaw_w = static_cast<int>((yaw + (float)M_PI)/(M_PI * 2.0f) * 18);
+        yaw_w = static_cast<int>((yaw + (float)M_PI)/(M_PI * 2.0f) * 18);		
     }
 
     void onPose(myo::Myo* myo, uint64_t timestamp, myo::Pose pose)
@@ -75,6 +78,30 @@ public:
         if (pose != myo::Pose::unknown && pose != myo::Pose::rest) {
             myo->unlock(myo::Myo::unlockHold);
 			myo->notifyUserAction();
+
+			std::string poseString = currentPose.toString();
+
+			if (poseString == "waveOut")
+			{
+				keybd_event(VK_RIGHT,0xcd,0 , 0); //Right Press
+				keybd_event(VK_RIGHT,0xcd, KEYEVENTF_KEYUP,0); // Right Release
+			}
+			else if (poseString == "waveIn")
+			{
+				keybd_event(VK_LEFT,0xcb,0 , 0); //Right Press
+				keybd_event(VK_LEFT,0xcb, KEYEVENTF_KEYUP,0); // Right Release
+			}
+			else if (poseString == "fist")
+			{
+				keybd_event(VK_MENU,0xb8,KEYEVENTF_KEYUP,0); // Alt Release
+			}
+			else if (poseString == "fingersSpread")
+			{
+				keybd_event(VK_MENU,0xb8,0 , 0); //Alt Press
+				keybd_event(VK_TAB,0x8f,0 , 0); // Tab Press
+				keybd_event(VK_TAB,0x8f, KEYEVENTF_KEYUP,0); // Tab Release
+			}
+
         } else {
             myo->unlock(myo::Myo::unlockTimed); // Inactive
         }
@@ -100,6 +127,11 @@ public:
     {
         isUnlocked = false;
     }
+
+	void moveCursor()
+	{
+		SetCursorPos(yaw_w, pitch_w);
+	}
 
     bool onArm;
     myo::Arm whichArm;
@@ -160,7 +192,7 @@ VOID WINAPI ServiceMain (DWORD argc, LPTSTR *argv)
     if (SetServiceStatus (g_StatusHandle , &g_ServiceStatus) == FALSE)
     {
         OutputDebugString(_T(
-          "My Sample Service: ServiceMain: SetServiceStatus returned error"));
+          "MYOWindows: ServiceMain: SetServiceStatus returned error"));
     }
   
     g_ServiceStopEvent = CreateEvent (NULL, TRUE, FALSE, NULL);
@@ -208,7 +240,7 @@ VOID WINAPI ServiceMain (DWORD argc, LPTSTR *argv)
     if (SetServiceStatus (g_StatusHandle, &g_ServiceStatus) == FALSE)
     {
         OutputDebugString(_T(
-          "My Sample Service: ServiceMain: SetServiceStatus returned error"));
+          "MYOWindows: ServiceMain: SetServiceStatus returned error"));
     }
     
 EXIT:
@@ -280,6 +312,7 @@ DWORD WINAPI ServiceWorkerThread (LPVOID lpParam)
 			while (1) 
 			{
 				hub.run(1000/20);  // 20 times a second
+				collector.moveCursor();
 				if (serviceStop == 1)
 				{
 					serviceStop = 0;
