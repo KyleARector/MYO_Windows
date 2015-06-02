@@ -294,7 +294,7 @@ DWORD WINAPI ServiceWorkerThread (LPVOID lpParam)
     {                
         try 
 		{
-			myo::Hub hub("com.example.hello-myo");
+			myo::Hub hub("com.myo.service");
 
 			myo::Myo* myo = hub.waitForMyo(10000);
 
